@@ -1,4 +1,3 @@
-```markdown
 # EV-MESH: Autonomous Mobile Energy Orchestration Hub
 
 > **Smart India Hackathon (SIH) Project**  
@@ -8,7 +7,7 @@
 
 ## 📌 Overview
 
-**EV-MESH** is a platform that transforms parked Electric Vehicles (EVs) into active energy storage nodes. Instead of treating EVs as passive loads that strain the power grid, EV-MESH enables safe, bidirectional energy sharing between **EVs, rooftop solar PVs, stationary storage batteries, and microgrids**.
+**EV-MESH** is a combined hardware and software platform that transforms parked Electric Vehicles (EVs) into active energy storage nodes. Instead of treating EVs as passive loads that strain the power grid, EV-MESH enables safe, bidirectional energy sharing between **EVs, rooftop solar PVs, stationary storage batteries, and microgrids**.
 
 Powered by our proprietary **MAREN (Mobile Autonomous Reserve Energy Negotiation)** engine, EV-MESH automatically calculates driver commute needs to ensure a donor vehicle is **never left stranded**, while unlocking passive revenue through peak-hour energy trading.
 
@@ -34,7 +33,7 @@ Powered by our proprietary **MAREN (Mobile Autonomous Reserve Energy Negotiation
 
 ---
 
-## 🏗️ System Architecture
+## 📐 System Architecture
 
 ```text
 [ Rooftop Solar PV ] ──┐
@@ -44,7 +43,6 @@ Powered by our proprietary **MAREN (Mobile Autonomous Reserve Energy Negotiation
 
 ```
 
----
 
 ## 🔄 Operational Flow
 
