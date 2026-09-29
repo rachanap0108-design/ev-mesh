@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EV-MESH: Energy Orchestration Hub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              teal:    '#0d9488',
+              teallt:  '#ccfbf1',
+              tealmid: '#99f6e4',
+              amber:   '#d97706',
+              amberlt: '#fef3c7',
+              red:     '#dc2626',
+              redlt:   '#fee2e2',
+              blue:    '#2563eb',
+              bluelt:  '#dbeafe',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f9fafb;
+      color: #111827;
+      margin: 0;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+
+    /* subtle diagonal texture on the body bg */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d1d5db' fill-opacity='0.25'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #root { position: relative; z-index: 1; }
+
+    /* Card elevation */
+    .card {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+    }
+    .card-inset {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+    }
+
+    /* Range input */
+    input[type=range] {
+      -webkit-appearance: none;
+      height: 6px;
+      border-radius: 99px;
+      background: #e5e7eb;
+      outline: none;
+      cursor: pointer;
+      width: 100%;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #0d9488;
+      border: 3px solid #ffffff;
+      box-shadow: 0 1px 4px rgba(0,0,0,.25);
+      cursor: pointer;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 7px; }
+    ::-webkit-scrollbar-track { background: #f3f4f6; }
+    ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+    /* Animated flow bar */
+    @keyframes flow {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(250%); }
+    }
+    .flow-anim { animation: flow 1.4s linear infinite; }
+
+    /* Pulse dot */
+    @keyframes soft-pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: .4; }
+    }
+    .soft-pulse { animation: soft-pulse 1.8s ease-in-out infinite; }
+
+    /* Logo ring */
+    @keyframes ring-grow {
+      0%, 100% { transform: scale(1); opacity: .9; }
+      50%       { transform: scale(1.35); opacity: 0; }
+    }
+    .ring-anim { animation: ring-grow 2.2s ease-out infinite; }
+
+    table { border-collapse: collapse; width: 100%; }
+    th, td { text-align: left; }
+  </style>
+
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "react":           "https://esm.sh/react@18.2.0",
+      "react-dom/client":"https://esm.sh/react-dom@18.2.0/client",
+      "lucide-react":    "https://esm.sh/lucide-react@0.330.0?deps=react@18.2.0",
+      "recharts":        "https://esm.sh/recharts@2.12.0?deps=react@18.2.0,react-dom@18.2.0",
+      "framer-motion":   "https://esm.sh/framer-motion@11.0.3?deps=react@18.2.0,react-dom@18.2.0"
+    }
+  }
+  </script>
+</head>
+
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-type="module">
+import React, { useState, useEffect } from 'react';
+import { createRoot } from 'react-dom/client';
+import {
+  Battery, Zap, Activity, ShieldAlert, ArrowRightLeft,
+  DollarSign, Globe, Car, Building2, Radio,
+  AlertTriangle, Power, TrendingUp, History, Sun, Cpu
+} from 'lucide-react';
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid,
+  Tooltip as RTooltip, Legend, ResponsiveContainer
+} from 'recharts';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const rand  = (min, max) => Math.random() * (max - min) + min;
+const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
+
+const makeChartData = () =>
+  Array.from({ length: 24 }, (_, i) => ({
+    time:     `${i}:00`,
+    baseline: Math.round(rand(60, 100)),
+    managed:  Math.round(rand(47, 76)),
+  }));
+
+const TRANSACTIONS = [
+  { id:'TX-9921', donor:'EV-8042',  receiver:'Grid Load-A', rate:4.2, dt:'+0.8°C', proto:'MQTT', status:'Active' },
+  { id:'TX-9922', donor:'EV-1102',  receiver:'EV-3341',     rate:7.4, dt:'+1.4°C', proto:'BLE',  status:'Active' },
+  { id:'TX-9923', donor:'Solar PV', receiver:'Grid Load-B', rate:32.5,dt:'+0.4°C', proto:'MQTT', status:'Active' },
+  { id:'TX-9924', donor:'EV-5591',  receiver:'EV-1008',     rate:0,   dt:'—',      proto:'MQTT', status:'Done'   },
+];
+
+const NavBar = ({ tab, setTab }) => (
+  <header className="bg-white border-b border-gray-200 sticky top-0 z-50"
+          style={{ boxShadow:'0 1px 0 0 #e5e7eb, 0 2px 8px rgba(0,0,0,.04)' }}>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+      <div className="flex items-center gap-3">
+        <div className="relative w-8 h-8 flex items-center justify-center">
+          <div className="absolute inset-0 rounded-full border-2 border-teal-500 ring-anim opacity-60" />
+          <Globe className="w-5 h-5 text-teal-600 relative z-10" />
+        </div>
+        <span className="font-extrabold text-lg tracking-tight text-gray-900">EV‑MESH</span>
+        <span className="hidden sm:inline-block text-xs font-medium text-gray-400 ml-1 mt-0.5">Energy Orchestration Hub</span>
+      </div>
+
+      <nav className="flex bg-gray-100 rounded-xl p-1 gap-1">
+        {[
+          { key:'driver',   icon: Car,       label: 'Driver App'    },
+          { key:'facility', icon: Building2, label: 'Grid Operator' },
+        ].map(({ key, icon: Icon, label }) => (
+          <button key={key} onClick={() => setTab(key)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all
+              ${tab === key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}>
+            <Icon className="w-4 h-4" />
+            <span className="hidden sm:inline">{label}</span>
+          </button>
+        ))}
+      </nav>
+
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-full border border-gray-200 text-xs font-medium text-gray-600">
+        <span className="w-2 h-2 rounded-full bg-emerald-500 soft-pulse" />
+        <Radio className="w-3.5 h-3.5 text-gray-400" />
+        <span className="hidden sm:inline">Connected · ESP32 Node 01</span>
+      </div>
+    </div>
+  </header>
+);
+
+const SectionHead = ({ icon: Icon, color = 'text-teal-600', title, badge }) => (
+  <div className="flex items-center justify-between mb-5">
+    <div className="flex items-center gap-2">
+      <Icon className={`w-5 h-5 ${color}`} />
+      <h3 className="font-semibold text-gray-800 text-base">{title}</h3>
+    </div>
+    {badge && <span className="text-xs font-semibold px-2.5 py-1 bg-teal-50 text-teal-700 rounded-full border border-teal-100">{badge}</span>}
+  </div>
+);
+
+const Stat = ({ label, value, unit, accent }) => (
+  <div className="card-inset p-4">
+    <div className="text-xs text-gray-400 font-medium mb-1">{label}</div>
+    <div className={`font-bold text-lg ${accent ?? 'text-gray-800'}`}>
+      {value}<span className="text-sm font-normal text-gray-400 ml-0.5">{unit}</span>
+    </div>
+  </div>
+);
+
+const Toggle = ({ on, toggle }) => (
+  <button onClick={toggle}
+    className={`w-11 h-6 rounded-full relative transition-colors focus:outline-none ${on ? 'bg-teal-500' : 'bg-gray-200'}`}>
+    <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-5' : ''}`} />
+  </button>
+);
+
+const DriverScreen = ({ t }) => {
+  const [dest, setDest] = useState(45);
+  const [autoShare, setAutoShare] = useState(true);
+  const [stopped, setStopped] = useState(false);
+  const reserve = clamp(Math.round((dest / 400) * 100 + 25), 26, 100);
+  const eShare  = Math.max(0, ((t.soc - reserve) / 100) * 82).toFixed(1);
+  const pct     = Math.round(t.soc);
+  const circ    = 2 * Math.PI * 54;
+  const dash    = circ * (pct / 100);
+
+  return (
+    <motion.div key="driver"
+      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }} transition={{ duration: .3 }}
+      className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+      {/* Telemetry */}
+      <div className="card p-6">
+        <SectionHead icon={Battery} title="Live Vehicle Telemetry" />
+        <div className="flex flex-col sm:flex-row items-center gap-8">
+          <div className="relative flex-shrink-0 w-36 h-36">
+            <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
+              <circle cx="60" cy="60" r="54" fill="none" stroke="#f3f4f6" strokeWidth="10" />
+              <circle cx="60" cy="60" r="54" fill="none" stroke="#0d9488" strokeWidth="10"
+                strokeLinecap="round"
+                strokeDasharray={`${dash} ${circ}`}
+                className="transition-all duration-1000" />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-3xl font-bold text-gray-900">{pct}%</span>
+              <span className="text-xs text-gray-400 font-semibold tracking-widest uppercase mt-0.5">SoC</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 flex-1 w-full">
+            <Stat label="Remaining Range" value={Math.round(t.soc * 3.9)} unit=" km" />
+            <Stat label="Battery Health (SoH)" value="96" unit="%" accent="text-teal-600" />
+            <Stat label="Cell Temp" value={t.temp.toFixed(1)} unit="°C" />
+            <Stat label="Bus Voltage" value={t.voltage.toFixed(1)} unit=" V DC" />
+          </div>
+        </div>
+      </div>
+
+      {/* MAREN Engine */}
+      <div className="card p-6">
+        <SectionHead icon={Cpu} title="MAREN Engine Configuration" />
+        <div className="space-y-5">
+          <div>
+            <div className="flex justify-between text-sm mb-2">
+              <span className="text-gray-600 font-medium">Destination Distance</span>
+              <span className="font-bold text-teal-600">{dest} km</span>
+            </div>
+            <input type="range" min="0" max="200" value={dest} onChange={e => setDest(+e.target.value)} />
+            <div className="flex justify-between text-xs text-gray-400 mt-1"><span>0 km</span><span>200 km</span></div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="card-inset p-4">
+              <div className="text-xs text-gray-400 mb-1">Safety Reserve (SoC_reserve)</div>
+              <div className="text-2xl font-bold text-gray-800">{reserve}<span className="text-sm font-normal text-gray-400">%</span></div>
+              <div className="text-xs text-gray-400 mt-1">Dest + 25% buffer</div>
+            </div>
+            <div className="card-inset p-4" style={{ borderColor:'#99f6e4', background:'#f0fdfa' }}>
+              <div className="text-xs text-gray-500 mb-1">E_safe — Shareable</div>
+              <div className="text-2xl font-bold text-teal-600">{eShare}<span className="text-sm font-normal text-teal-400"> kWh</span></div>
+              <div className="text-xs text-gray-400 mt-1">Available for V2V/V2G</div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-1">
+            <div>
+              <div className="text-sm font-semibold text-gray-800">Auto-Share Mode</div>
+              <div className="text-xs text-gray-400 mt-0.5">Autonomous V2V / V2G when parked</div>
+            </div>
+            <Toggle on={autoShare} toggle={() => setAutoShare(v => !v)} />
+          </div>
+        </div>
+      </div>
+
+
+      {/* Active Transfer */}
+      <div className={`card p-6 lg:col-span-2 transition-all ${stopped ? 'border-red-300' : ''}`}>
+        <div className="flex items-center justify-between mb-6">
+          <SectionHead icon={Zap} color={stopped ? 'text-red-500' : 'text-amber-500'} title="Active Power Transfer" />
+          {!stopped ? (
+            <button
+              onClick={() => setStopped(true)}
+              className="flex items-center gap-2 text-sm font-semibold text-red-600 px-4 py-2 rounded-lg border border-red-200 bg-red-50 hover:bg-red-600 hover:text-white transition-all">
+              <ShieldAlert className="w-4 h-4" /> Emergency Stop
+            </button>
+          ) : (
+            <button
+              onClick={() => setStopped(false)}
+              className="flex items-center gap-2 text-sm font-semibold text-teal-700 px-4 py-2 rounded-lg border border-teal-200 bg-teal-50 hover:bg-teal-600 hover:text-white transition-all">
+              <Power className="w-4 h-4" /> Reconnect
+            </button>
+          )}
+        </div>
+
+        {/* Stopped banner */}
+        {stopped && (
+          <div className="mb-6 rounded-xl bg-red-50 border border-red-200 px-5 py-4 flex items-center gap-3">
+            <ShieldAlert className="w-6 h-6 text-red-500 flex-shrink-0" />
+            <div>
+              <div className="font-bold text-red-700 text-sm">Relay Disconnected — Transfer Halted</div>
+              <div className="text-xs text-red-500 mt-0.5">All contactors open. Node EV-8042 notified via MQTT. Click Reconnect to resume.</div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between max-w-2xl mx-auto mb-8 gap-4">
+          <div className="text-center">
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-sm border ${stopped ? 'bg-gray-50 border-gray-200' : 'bg-teal-50 border-teal-200'}`}>
+              <Car className={`w-6 h-6 ${stopped ? 'text-gray-400' : 'text-teal-600'}`} />
+            </div>
+            <div className="font-semibold text-sm text-gray-800">My Vehicle</div>
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full mt-1 inline-block border ${stopped ? 'text-gray-400 bg-gray-50 border-gray-100' : 'text-teal-700 bg-teal-50 border-teal-100'}`}>
+              {stopped ? 'Idle' : 'Donor'}
+            </span>
+          </div>
+
+          <div className="flex-1 flex flex-col items-center gap-2">
+            <span className={`text-xs font-bold px-3 py-1 rounded-full shadow-sm border ${stopped ? 'text-gray-400 bg-gray-50 border-gray-200' : 'text-gray-600 bg-gray-100 border-gray-200'}`}>
+              {stopped ? '0.0 kW' : `${t.transferRate.toFixed(1)} kW`}
+            </span>
+            <div className="w-full h-3 rounded-full bg-gray-100 border border-gray-200 overflow-hidden relative">
+              {!stopped && (
+                <div className="absolute inset-y-0 left-0 w-1/3 rounded-full flow-anim"
+                  style={{ background:'linear-gradient(90deg, transparent, #0d9488, transparent)' }} />
+              )}
+            </div>
+            <span className="text-xs text-gray-400">{stopped ? 'Contactors open' : 'MQTT · BLE Handoff'}</span>
+          </div>
+
+          <div className="text-center">
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-sm border ${stopped ? 'bg-gray-50 border-gray-200' : 'bg-amber-50 border-amber-200'}`}>
+              <Car className={`w-6 h-6 ${stopped ? 'text-gray-400' : 'text-amber-500'}`} />
+            </div>
+            <div className="font-semibold text-sm text-gray-800">Node EV-8042</div>
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full mt-1 inline-block border ${stopped ? 'text-gray-400 bg-gray-50 border-gray-100' : 'text-amber-700 bg-amber-50 border-amber-100'}`}>
+              {stopped ? 'Disconnected' : 'Receiver'}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Stat label="Converter Efficiency" value={stopped ? '—' : '94.2'} unit={stopped ? '' : '%'} accent={stopped ? 'text-gray-400' : 'text-teal-600'} />
+          <Stat label="C-Rate" value={stopped ? '0.00' : t.cRate.toFixed(2)} unit=" C" accent={stopped ? 'text-gray-400' : undefined} />
+          <Stat label="Time Remaining" value={stopped ? 'Halted' : '18'} unit={stopped ? '' : ' mins'} accent={stopped ? 'text-red-500' : undefined} />
+          <Stat label="Energy Transferred" value={(t.soc * 0.1).toFixed(1)} unit=" kWh" accent="text-blue-600" />
+        </div>
+      </div>
+
+      {/* Wallet */}
+      <div className="card p-6 lg:col-span-2">
+        <SectionHead icon={DollarSign} title="ToD Arbitrage Earnings & Wallet" badge="Time-of-Day Arbitrage" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="card-inset p-5 flex flex-col justify-center">
+            <div className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-2">Monthly Earnings</div>
+            <div className="text-4xl font-extrabold text-gray-900">₹3,420</div>
+            <div className="flex items-center gap-1 mt-2">
+              <TrendingUp className="w-4 h-4 text-teal-600" />
+              <span className="text-sm font-medium text-teal-600">+12.4% vs last month</span>
+            </div>
+          </div>
+
+          <div className="card-inset p-5 col-span-2 space-y-4">
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Cost vs Revenue</div>
+            {[
+              { label:'Off-Peak Charging Cost',  rate:'₹3.0/kWh', pct:'32%', color:'bg-gray-300' },
+              { label:'Peak Selling Rate (ToD)', rate:'₹9.5/kWh', pct:'100%', color:'bg-teal-500' },
+            ].map(r => (
+              <div key={r.label}>
+                <div className="flex justify-between text-sm mb-1.5">
+                  <span className="text-gray-600">{r.label}</span>
+                  <span className="font-bold text-gray-800">{r.rate}</span>
+                </div>
+                <div className="h-2 bg-gray-100 rounded-full overflow-hidden border border-gray-200">
+                  <div className={`h-full ${r.color} rounded-full`} style={{ width: r.pct }} />
+                </div>
+              </div>
+            ))}
+
+            <div className="pt-3 border-t border-gray-100">
+              <div className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-2 flex items-center gap-1">
+                <History className="w-3.5 h-3.5" /> Recent Transactions
+              </div>
+              {[
+                { desc:'Sold 12.5 kWh → EV-8042',   credit:'+₹81.25' },
+                { desc:'Sold 8.1 kWh → Grid Load-A', credit:'+₹52.50' },
+                { desc:'Charged 24 kWh (off-peak)',   credit:'-₹72.00' },
+              ].map((tx, i) => (
+                <div key={i} className="flex items-center justify-between py-1.5 text-sm border-b border-gray-50 last:border-0">
+                  <span className="text-gray-600">{tx.desc}</span>
+                  <span className={`font-bold ${tx.credit.startsWith('+') ? 'text-teal-600' : 'text-gray-500'}`}>{tx.credit}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+const FacilityScreen = ({ chartData }) => {
+  const [isolated, setIsolated] = useState(false);
+
+  return (
+    <motion.div key="facility"
+      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }} transition={{ duration: .3 }}
+      className="space-y-5">
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { icon: Car,       bg:'bg-blue-50',   border:'border-blue-200',  iconC:'text-blue-500',   val:'12',    sub:'Connected EVs',    note:'Active mesh nodes'  },
+          { icon: Sun,       bg:'bg-amber-50',  border:'border-amber-200', iconC:'text-amber-500',  val:'45 kW', sub:'Rooftop Solar PV', note:'Currently generating'},
+          { icon: Battery,   bg:'bg-teal-50',   border:'border-teal-200',  iconC:'text-teal-600',   val:'2',     sub:'Battery Banks',    note:'Stationary storage' },
+          { icon: Building2, bg:'bg-red-50',    border:'border-red-200',   iconC:'text-red-500',    val:'1',     sub:'Critical Load',    note:'Facility operations'},
+        ].map(({ icon: Icon, bg, border, iconC, val, sub, note }) => (
+          <div key={sub} className="card p-5 flex flex-col gap-3">
+            <div className={`w-9 h-9 rounded-xl ${bg} border ${border} flex items-center justify-center`}>
+              <Icon className={`w-4 h-4 ${iconC}`} />
+            </div>
+            <div>
+              <div className="text-xl font-bold text-gray-900">{val}</div>
+              <div className="text-sm font-semibold text-gray-700">{sub}</div>
+              <div className="text-xs text-gray-400 mt-0.5">{note}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Chart */}
+        <div className="card p-6 lg:col-span-2">
+          <SectionHead icon={Activity} title="Transformer Load & Peak-Shaving Analytics" badge="Peak demand −18.4%" />
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="gManaged" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%"   stopColor="#0d9488" stopOpacity={.2} />
+                    <stop offset="100%" stopColor="#0d9488" stopOpacity={0}  />
+                  </linearGradient>
+                  <linearGradient id="gBase" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%"   stopColor="#94a3b8" stopOpacity={.12} />
+                    <stop offset="100%" stopColor="#94a3b8" stopOpacity={0}   />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                <XAxis dataKey="time" stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
+                <RTooltip contentStyle={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:'10px', fontSize:'12px' }}
+                  labelStyle={{ fontWeight:600, color:'#374151' }} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize:'12px', color:'#6b7280' }} />
+                <Area type="monotone" name="Unmanaged Baseline (kW)" dataKey="baseline"
+                  stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="5 4" fill="url(#gBase)" dot={false} />
+                <Area type="monotone" name="EV-MESH Managed (kW)" dataKey="managed"
+                  stroke="#0d9488" strokeWidth={2} fill="url(#gManaged)" dot={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Safety */}
+        <div className="card p-6 flex flex-col">
+          <SectionHead icon={ShieldAlert} color="text-red-500" title="Safety & Hazard Control" />
+          <div className="space-y-3 flex-1">
+            {[
+              { name:'Inverter Array Alpha', temp:68, max:85, color:'bg-amber-400' },
+              { name:'DC-DC Converter B1',  temp:52, max:85, color:'bg-teal-500'  },
+              { name:'BMS Module #3',        temp:44, max:85, color:'bg-teal-500'  },
+            ].map(c => (
+              <div key={c.name} className="card-inset p-3">
+                <div className="flex justify-between mb-2">
+                  <span className="text-xs font-medium text-gray-700">{c.name}</span>
+                  <span className={`text-xs font-bold ${c.temp > 65 ? 'text-amber-600' : 'text-gray-500'}`}>{c.temp}°C</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-gray-200 overflow-hidden">
+                  <div className={`h-full ${c.color} rounded-full`} style={{ width:`${(c.temp/c.max)*100}%` }} />
+                </div>
+              </div>
+            ))}
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 flex gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <div className="text-sm font-semibold text-amber-700">Thermal Gradient Warning</div>
+                <div className="text-xs text-amber-600 mt-0.5">&gt;1.5°C/min on EV-1102. Auto-throttle activated.</div>
+              </div>
+            </div>
+          </div>
+
+          <div className={`mt-4 rounded-xl p-4 border transition-colors ${isolated ? 'bg-red-50 border-red-300' : 'bg-gray-50 border-gray-200'}`}>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <div className="text-sm font-semibold text-gray-800">Grid Isolation Override</div>
+                <div className="text-xs text-gray-400 mt-0.5">Master disconnect — all nodes</div>
+              </div>
+              <Toggle on={isolated} toggle={() => setIsolated(v => !v)} />
+            </div>
+            {isolated && (
+              <div className="text-xs font-semibold text-red-600 bg-red-100 rounded-lg px-3 py-2 flex items-center gap-2">
+                <Power className="w-3.5 h-3.5" /> Grid isolated. All flows suspended.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Routing Table */}
+        <div className="card p-6 lg:col-span-3 overflow-x-auto">
+          <SectionHead icon={ArrowRightLeft} title="Live Energy Routing Table"
+            badge={`${TRANSACTIONS.filter(t=>t.status==='Active').length} active`} />
+          <table>
+            <thead>
+              <tr className="border-b border-gray-100">
+                {['Transaction ID','Donor Node','Receiver / Grid','Flow Rate (kW)','Thermal ΔT','Protocol','Status','Action'].map(h => (
+                  <th key={h} className="pb-3 pr-4 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="text-sm">
+              {TRANSACTIONS.map((tx, i) => (
+                <tr key={i} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                  <td className="py-3.5 pr-4 font-mono text-gray-600 text-xs">{tx.id}</td>
+                  <td className="py-3.5 pr-4 font-medium text-gray-800">{tx.donor}</td>
+                  <td className="py-3.5 pr-4 text-gray-600">{tx.receiver}</td>
+                  <td className="py-3.5 pr-4 font-bold text-teal-600">{tx.rate}</td>
+                  <td className="py-3.5 pr-4 text-amber-600 font-medium">{tx.dt}</td>
+                  <td className="py-3.5 pr-4">
+                    <span className="bg-gray-100 text-gray-600 text-xs font-semibold px-2 py-1 rounded-md">{tx.proto}</span>
+                  </td>
+                  <td className="py-3.5 pr-4">
+                    <span className={`flex items-center gap-1.5 text-xs font-semibold ${tx.status === 'Active' ? 'text-teal-600' : 'text-gray-400'}`}>
+                      {tx.status === 'Active' && <span className="w-1.5 h-1.5 rounded-full bg-teal-500 soft-pulse" />}
+                      {tx.status}
+                    </span>
+                  </td>
+                  <td className="py-3.5">
+                    <button className="text-xs font-medium text-gray-500 hover:text-red-600 border border-gray-200 hover:border-red-300 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-all">
+                      Force Trip
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+const App = () => {
+  const [tab, setTab] = useState('driver');
+  const [t, setT] = useState({ soc:78.4, temp:31.5, voltage:48.2, transferRate:3.2, cRate:0.35 });
+  const [chartData, setChartData] = useState(makeChartData);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setT(prev => ({
+        soc:          clamp(prev.soc - 0.04 + rand(0, 0.03), 20, 100),
+        temp:         rand(31.0, 32.8),
+        voltage:      rand(47.9, 48.5),
+        transferRate: rand(2.9, 3.6),
+        cRate:        rand(0.31, 0.40),
+      }));
+      setChartData(prev => {
+        const copy = [...prev];
+        const last = copy.length - 1;
+        copy[last] = {
+          ...copy[last],
+          baseline: clamp(copy[last].baseline + rand(-4, 4), 50, 110),
+          managed:  clamp(copy[last].managed  + rand(-2, 2), 40, 80),
+        };
+        return copy;
+      });
+    }, 2000);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <div className="min-h-screen">
+      <NavBar tab={tab} setTab={setTab} />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <AnimatePresence mode="wait">
+          {tab === 'driver'
+            ? <DriverScreen   key="driver"   t={t} />
+            : <FacilityScreen key="facility" chartData={chartData} />
+          }
+        </AnimatePresence>
+      </main>
+    </div>
+  );
+};
+
+createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
