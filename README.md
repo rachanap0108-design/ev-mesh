@@ -1,3 +1,4 @@
+```markdown
 # EV-MESH: Autonomous Mobile Energy Orchestration Hub
 
 > **Smart India Hackathon (SIH) Project**  
@@ -33,7 +34,7 @@ Powered by our proprietary **MAREN (Mobile Autonomous Reserve Energy Negotiation
 
 ---
 
-## 📐 System Architecture
+## 🏗️ System Architecture
 
 ```text
 [ Rooftop Solar PV ] ──┐
@@ -41,7 +42,97 @@ Powered by our proprietary **MAREN (Mobile Autonomous Reserve Energy Negotiation
 [ Microgrid / Grid ] ──┘          │          <──> [ EV 2 (Receiver) ]
                                   └──> [ Home / Facility Loads ]
 
-🔄 Operational Flow[Telemetry Ingestion] ➔ [Peer Discovery] ➔ [MAREN Optimization] ➔ [Cryptographic Handshake] ➔ [Active Power Flow]
-Telemetry Ingestion: Reads battery State of Charge ($\text{SoC}$), State of Health ($\text{SoH}$), and temperature parameters via CAN Bus / OBD-II protocol interfaces.Peer Discovery: Dynamic spatial matching algorithm that pairs requesting nodes with available donor nodes within a defined geofenced radius.MAREN Engine Optimization: Calculates maximum allowable transfer energy ($E_{\text{safe}}$) while maintaining required reserve power based on the donor's next scheduled commute.Cryptographic Handshake: Hardware-level mutual authentication verifying device identity, session parameters, and tokenized access.Active Power Flow: Executes galvanically isolated DC-DC current transfer with continuous, closed-loop thermal and voltage safety monitoring.🛠️ Tech Stack & SpecificationsHardware SubsystemMicrocontroller: ESP32-WROOM-32D (Dual-Core 32-bit LX6 @ 240MHz)Power Stage: Isolated Bidirectional Buck-Boost DC-DC ConverterSensors:INA219 ($\text{I}^2\text{C}$ High-Side Voltage/Current Monitor)ACS712 Hall-Effect Current Sensor Module$NTC$ Thermistors (Direct Thermal Monitoring)Communication & Safety: SN65HVD230 CAN Transceiver, PC817 Optocoupler Isolation RelaysSoftware & Cloud ArchitectureEdge Firmware: Embedded C++ / ESP-IDF (Real-time PWM control, CAN/OBD-II protocol stack, BLE fallback)Optimization Engine: Python (MAREN Algorithm, Matrix Solvers)Backend & Broker: Node.js / FastAPI, EMQX MQTT Broker, InfluxDB (Time-series telemetry database)Frontend Dashboard: React.js, Tailwind CSS, Recharts, Framer Motion💻 Web Dashboard ViewportsThe platform features two specialized viewports designed for real-time monitoring and control:1. Driver & EV Owner App (/driver)Live Battery Telemetry: Visual status ring displaying real-time $\text{SoC}$, $\text{SoH}$, core temperature, and pack voltage.MAREN Commute Slider: Interactive tool allowing users to set target travel distance to automatically reserve and lock necessary driving energy.Power Transfer Monitor: Real-time power flow animations accompanied by a one-tap Emergency Disconnect safety button.Arbitrage Wallet: Live financial tracker reporting passive income earnings (in ₹) from peer-to-peer grid support.2. Grid & Facility Operator Console (/facility)Microgrid Topology: Interactive visual topology map highlighting active node-to-node energy paths across the local grid.Demand Response Analytics: 24-hour peak-shaving chart comparing baseline transformer load against optimized grid load profiles.Thermal Heatmap & Overrides: Node-level thermal tracking matrix with administrative remote shutdown controls.📊 Quantified System ImpactMetricTarget ImpactGrid Peak Stress15% – 20% reduction in local peak transformer loadRenewable UtilizationUp to 30% reduction in daytime solar energy waste (curtailment)Stranded EVs40% decrease in roadside zero-charge emergency eventsOwner Monetization₹2,500 – ₹4,000/month passive revenue generated per active donor vehicle
+```
+
+---
+
+## 🔄 Operational Flow
+
+```text
+[Telemetry Ingestion] ➔ [Peer Discovery] ➔ [MAREN Optimization] ➔ [Cryptographic Handshake] ➔ [Active Power Flow]
+
+```
+
+1. **Telemetry Ingestion:** Reads battery State of Charge ($\text{SoC}$), State of Health ($\text{SoH}$), and temperature parameters via CAN Bus / OBD-II protocol interfaces.
+2. **Peer Discovery:** Dynamic spatial matching algorithm that pairs requesting nodes with available donor nodes within a defined geofenced radius.
+3. **MAREN Engine Optimization:** Calculates maximum allowable transfer energy ($E_{\text{safe}}$) while maintaining required reserve power based on the donor's next scheduled commute.
+4. **Cryptographic Handshake:** Hardware-level mutual authentication verifying device identity, session parameters, and tokenized access.
+5. **Active Power Flow:** Executes galvanically isolated DC-DC current transfer with continuous, closed-loop thermal and voltage safety monitoring.
+
+---
+
+## 🛠️ Tech Stack & Specifications
+
+### Hardware Subsystem
+
+* **Microcontroller:** ESP32-WROOM-32D (Dual-Core 32-bit LX6 @ 240MHz)
+* **Power Stage:** Isolated Bidirectional Buck-Boost DC-DC Converter
+* **Sensors:**
+* INA219 ($\text{I}^2\text{C}$ High-Side Voltage/Current Monitor)
+* ACS712 Hall-Effect Current Sensor Module
+* $NTC$ Thermistors (Direct Thermal Monitoring)
 
 
+* **Communication & Safety:** SN65HVD230 CAN Transceiver, PC817 Optocoupler Isolation Relays
+
+### Software & Cloud Architecture
+
+* **Edge Firmware:** Embedded C++ / ESP-IDF (Real-time PWM control, CAN/OBD-II protocol stack, BLE fallback)
+* **Optimization Engine:** Python (MAREN Algorithm, Matrix Solvers)
+* **Backend & Broker:** Node.js / FastAPI, EMQX MQTT Broker, InfluxDB (Time-series telemetry database)
+* **Frontend Dashboard:** React.js, Tailwind CSS, Recharts, Framer Motion
+
+---
+
+## 💻 Web Dashboard Viewports
+
+### 1. Driver & EV Owner App (`/driver`)
+
+* **Live Battery Telemetry:** Visual status ring displaying real-time $\text{SoC}$, $\text{SoH}$, core temperature, and pack voltage.
+* **MAREN Commute Slider:** Interactive tool allowing users to set target travel distance to automatically reserve and lock necessary driving energy.
+* **Power Transfer Monitor:** Real-time power flow animations accompanied by a one-tap **Emergency Disconnect** safety button.
+* **Arbitrage Wallet:** Live financial tracker reporting passive income earnings (in ₹) from peer-to-peer grid support.
+
+### 2. Grid & Facility Operator Console (`/facility`)
+
+* **Microgrid Topology:** Interactive visual topology map highlighting active node-to-node energy paths across the local grid.
+* **Demand Response Analytics:** 24-hour peak-shaving chart comparing baseline transformer load against optimized grid load profiles.
+* **Thermal Heatmap & Overrides:** Node-level thermal tracking matrix with administrative remote shutdown controls.
+
+---
+
+## 📊 Quantified System Impact
+
+| Metric | Target Impact |
+| --- | --- |
+| **Grid Peak Stress** | **15% – 20%** reduction in local peak transformer load |
+| **Renewable Utilization** | **Up to 30%** reduction in daytime solar energy waste (curtailment) |
+| **Stranded EVs** | **40%** decrease in roadside zero-charge emergency events |
+| **Owner Monetization** | **₹2,500 – ₹4,000/month** passive revenue generated per active donor vehicle |
+
+---
+
+### Firmware Setup & Flashing
+
+1. Connect the ESP32 node board to your development machine via USB.
+2. Open the project folder or `firmware/ev_mesh_node.ino` in PlatformIO or Arduino IDE.
+3. Update your network credentials and endpoint parameters inside `config.h`:
+```cpp
+#define WIFI_SSID "Your_Network_Name"
+#define WIFI_PASS "Your_Network_Password"
+#define MQTT_BROKER "mqtt://your-emqx-instance-ip"
+#define MQTT_PORT 1883
+
+```
+4. Build and upload the binary to the ESP32 target.
+5. Open the Serial Monitor set to **115200 baud** to verify initial system diagnostic checks and telemetry output.
+
+---
+
+## 📜 License
+
+Distributed under the MIT License. See `LICENSE` for complete details.
+
+```
+
+```
