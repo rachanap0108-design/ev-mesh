@@ -110,23 +110,6 @@ Powered by our proprietary **MAREN (Mobile Autonomous Reserve Energy Negotiation
 
 ---
 
-### Firmware Setup & Flashing
-
-1. Connect the ESP32 node board to your development machine via USB.
-2. Open the project folder or `firmware/ev_mesh_node.ino` in PlatformIO or Arduino IDE.
-3. Update your network credentials and endpoint parameters inside `config.h`:
-```cpp
-#define WIFI_SSID "Your_Network_Name"
-#define WIFI_PASS "Your_Network_Password"
-#define MQTT_BROKER "mqtt://your-emqx-instance-ip"
-#define MQTT_PORT 1883
-
-```
-4. Build and upload the binary to the ESP32 target.
-5. Open the Serial Monitor set to **115200 baud** to verify initial system diagnostic checks and telemetry output.
-
----
-
 ## 📜 License
 
 Distributed under the MIT License. See `LICENSE` for complete details.
