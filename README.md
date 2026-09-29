@@ -40,3 +40,7 @@ Powered by our proprietary **MAREN (Mobile Autonomous Reserve Energy Negotiation
                        ├──> [ EV-MESH Hub ] <──> [ EV 1 (Donor) ]
 [ Microgrid / Grid ] ──┘          │          <──> [ EV 2 (Receiver) ]
                                   └──> [ Home / Facility Loads ]
+
+5-Step Operational FlowTelemetry Ingestion: Reads battery State of Charge ($\text{SoC}$), State of Health ($\text{SoH}$), and temperature via CAN Bus / OBD-II.Peer Discovery: Pairs requesting nodes and donor nodes within a geofenced radius.MAREN Engine Optimization: Calculates maximum allowable transfer energy ($E_{\text{safe}}$) based on the donor's next commute.Cryptographic Handshake: Verifies hardware identity and token authentication.Active Power Flow: Executes isolated DC-DC current transfer with continuous thermal and voltage control.
+
+
